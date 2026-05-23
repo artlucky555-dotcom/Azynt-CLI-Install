@@ -13,7 +13,7 @@ Write-Host ""
 $INSTALL_DIR = "$env:LOCALAPPDATA\Azynt"
 $BIN_DIR = "$INSTALL_DIR\bin"
 $EXE_NAME = "azynt.exe"
-$DOWNLOAD_URL = "https://github.com/artlucky555-dotcom/Azynt-CLI/releases/download/1/azynt.exe"
+$DOWNLOAD_URL = "https://github.com/artlucky555-dotcom/Azynt-CLI-Install/releases/download/1/azynt.exe"
 
 # Check if running as Administrator
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -46,17 +46,30 @@ $exePath = "$BIN_DIR\$EXE_NAME"
 
 try {
     $ProgressPreference = 'SilentlyContinue'
-    Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile $exePath -UseBasicParsing
+    
+    # Enable TLS 1.2 for GitHub
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    
+    # Use WebClient with longer timeout for large files
+    $webClient = New-Object System.Net.WebClient
+    $webClient.Headers.Add("User-Agent", "PowerShell-Azynt-Installer")
+    
+    Write-Host "      Downloading... (this may take a minute)" -ForegroundColor Gray
+    
+    # Download with progress
+    $webClient.DownloadFile($DOWNLOAD_URL, $exePath)
+    
     Write-Host "      Downloaded successfully" -ForegroundColor Green
 } catch {
     Write-Host "[ERROR] Download failed!" -ForegroundColor Red
     Write-Host ""
-    Write-Host "Possible reasons:" -ForegroundColor Yellow
-    Write-Host "- No internet connection" -ForegroundColor White
-    Write-Host "- GitHub release not found" -ForegroundColor White
-    Write-Host "- URL: $DOWNLOAD_URL" -ForegroundColor Gray
-    Write-Host ""
     Write-Host "Error: $_" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Alternative: Manual Installation" -ForegroundColor Yellow
+    Write-Host "1. Open in browser: $DOWNLOAD_URL" -ForegroundColor White
+    Write-Host "2. Save the downloaded file as: $exePath" -ForegroundColor White
+    Write-Host "3. Add to PATH: $BIN_DIR" -ForegroundColor White
+    Write-Host ""
     exit 1
 }
 
