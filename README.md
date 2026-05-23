@@ -1,0 +1,1 @@
+# Azynt-CLI-Install
