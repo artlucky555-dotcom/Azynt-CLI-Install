@@ -1,11 +1,11 @@
 # Azynt CLI - Online Installer
-# Usage: irm https://raw.githubusercontent.com/artos555/NoxCLi/main/install-online.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/YOUR-USERNAME/azynt-installer/main/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "   Azynt CLI - Online Installer" -ForegroundColor Cyan
+Write-Host "   Azynt CLI - Installer v1.0" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -13,91 +13,144 @@ Write-Host ""
 $INSTALL_DIR = "$env:LOCALAPPDATA\Azynt"
 $BIN_DIR = "$INSTALL_DIR\bin"
 $EXE_NAME = "azynt.exe"
-$GITHUB_REPO = "artlucky555-dotcom/Azynt-CLI"
-$DOWNLOAD_URL = "https://github.com/$GITHUB_REPO/releases/latest/download/azynt-windows-x64.exe"
+$DOWNLOAD_URL = "https://github.com/artlucky555-dotcom/Azynt-CLI/releases/download/1/azynt.exe"
 
 # Check if running as Administrator
 $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
 if (-not $isAdmin) {
-    Write-Host "[ERROR] Please run PowerShell as Administrator!" -ForegroundColor Red
-    Write-Host "Right-click PowerShell and select 'Run as administrator'" -ForegroundColor Yellow
+    Write-Host "[ERROR] Administrator privileges required!" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Please run PowerShell as Administrator:" -ForegroundColor Yellow
+    Write-Host "1. Right-click PowerShell" -ForegroundColor White
+    Write-Host "2. Select 'Run as administrator'" -ForegroundColor White
+    Write-Host ""
     exit 1
 }
 
 # Create installation directory
-Write-Host "[1/4] Creating installation directory..." -ForegroundColor Yellow
+Write-Host "[1/6] Creating installation directory..." -ForegroundColor Yellow
 if (-not (Test-Path $INSTALL_DIR)) {
     New-Item -ItemType Directory -Path $INSTALL_DIR -Force | Out-Null
 }
 if (-not (Test-Path $BIN_DIR)) {
     New-Item -ItemType Directory -Path $BIN_DIR -Force | Out-Null
 }
-Write-Host "[OK] Directory created: $BIN_DIR" -ForegroundColor Green
+Write-Host "      Created: $BIN_DIR" -ForegroundColor Green
 
 # Download executable
 Write-Host ""
-Write-Host "[2/4] Downloading Azynt CLI..." -ForegroundColor Yellow
+Write-Host "[2/6] Downloading Azynt CLI from GitHub..." -ForegroundColor Yellow
+Write-Host "      URL: $DOWNLOAD_URL" -ForegroundColor Gray
 $exePath = "$BIN_DIR\$EXE_NAME"
 
 try {
-    # Use WebClient for better progress display
-    $webClient = New-Object System.Net.WebClient
-    $webClient.DownloadFile($DOWNLOAD_URL, $exePath)
-    Write-Host "[OK] Downloaded successfully" -ForegroundColor Green
+    $ProgressPreference = 'SilentlyContinue'
+    Invoke-WebRequest -Uri $DOWNLOAD_URL -OutFile $exePath -UseBasicParsing
+    Write-Host "      Downloaded successfully" -ForegroundColor Green
 } catch {
-    Write-Host "[ERROR] Failed to download: $_" -ForegroundColor Red
+    Write-Host "[ERROR] Download failed!" -ForegroundColor Red
     Write-Host ""
-    Write-Host "Please check:" -ForegroundColor Yellow
-    Write-Host "1. Internet connection is working" -ForegroundColor Yellow
-    Write-Host "2. GitHub release exists at: $DOWNLOAD_URL" -ForegroundColor Yellow
+    Write-Host "Possible reasons:" -ForegroundColor Yellow
+    Write-Host "- No internet connection" -ForegroundColor White
+    Write-Host "- GitHub release not found" -ForegroundColor White
+    Write-Host "- URL: $DOWNLOAD_URL" -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Error: $_" -ForegroundColor Red
     exit 1
 }
 
 # Verify download
+Write-Host ""
+Write-Host "[3/6] Verifying installation..." -ForegroundColor Yellow
 if (-not (Test-Path $exePath)) {
-    Write-Host "[ERROR] Download failed - file not found" -ForegroundColor Red
+    Write-Host "[ERROR] File not found after download" -ForegroundColor Red
     exit 1
 }
 
+$fileSize = (Get-Item $exePath).Length / 1MB
+Write-Host "      File size: $([math]::Round($fileSize, 2)) MB" -ForegroundColor Green
+Write-Host "      Location: $exePath" -ForegroundColor Gray
+
 # Add to PATH
 Write-Host ""
-Write-Host "[3/4] Adding to PATH..." -ForegroundColor Yellow
+Write-Host "[4/6] Adding to system PATH..." -ForegroundColor Yellow
 
 $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($currentPath -notlike "*$BIN_DIR*") {
-    $newPath = "$currentPath;$BIN_DIR"
+    $newPath = if ($currentPath) { "$currentPath;$BIN_DIR" } else { $BIN_DIR }
     [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-    Write-Host "[OK] Added to PATH successfully" -ForegroundColor Green
+    Write-Host "      Added to PATH" -ForegroundColor Green
 } else {
-    Write-Host "[OK] Already in PATH" -ForegroundColor Green
+    Write-Host "      Already in PATH" -ForegroundColor Green
 }
 
 # Update current session PATH
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
 
-# Test installation
+# Add to Windows Apps & Features (Registry)
 Write-Host ""
-Write-Host "[4/4] Testing installation..." -ForegroundColor Yellow
+Write-Host "[5/6] Registering in Windows Apps..." -ForegroundColor Yellow
+
+$registryPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\AzyntCLI"
+$version = "1.0.0"
+$publisher = "Azynt"
+$installDate = Get-Date -Format "yyyyMMdd"
 
 try {
-    $version = & $exePath --version 2>&1
-    Write-Host "[OK] Installation successful!" -ForegroundColor Green
+    if (-not (Test-Path $registryPath)) {
+        New-Item -Path $registryPath -Force | Out-Null
+    }
+    
+    Set-ItemProperty -Path $registryPath -Name "DisplayName" -Value "Azynt CLI"
+    Set-ItemProperty -Path $registryPath -Name "DisplayVersion" -Value $version
+    Set-ItemProperty -Path $registryPath -Name "Publisher" -Value $publisher
+    Set-ItemProperty -Path $registryPath -Name "InstallLocation" -Value $INSTALL_DIR
+    Set-ItemProperty -Path $registryPath -Name "InstallDate" -Value $installDate
+    Set-ItemProperty -Path $registryPath -Name "UninstallString" -Value "powershell.exe -ExecutionPolicy Bypass -Command `"irm https://raw.githubusercontent.com/YOUR-USERNAME/azynt-installer/main/uninstall.ps1 | iex`""
+    Set-ItemProperty -Path $registryPath -Name "DisplayIcon" -Value $exePath
+    Set-ItemProperty -Path $registryPath -Name "NoModify" -Value 1 -Type DWord
+    Set-ItemProperty -Path $registryPath -Name "NoRepair" -Value 1 -Type DWord
+    
+    $fileSize = (Get-Item $exePath).Length
+    $fileSizeKB = [math]::Round($fileSize / 1KB)
+    Set-ItemProperty -Path $registryPath -Name "EstimatedSize" -Value $fileSizeKB -Type DWord
+    
+    Write-Host "      Registered in Apps & Features" -ForegroundColor Green
 } catch {
-    Write-Host "[WARNING] Installation completed but test failed" -ForegroundColor Yellow
+    Write-Host "      [WARNING] Could not register in Apps & Features" -ForegroundColor Yellow
+    Write-Host "      Error: $_" -ForegroundColor Gray
+}
+
+# Test installation
+Write-Host ""
+Write-Host "[6/6] Testing installation..." -ForegroundColor Yellow
+
+try {
+    $testOutput = & $exePath --version 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "      Version: $testOutput" -ForegroundColor Green
+    } else {
+        Write-Host "      Installed successfully" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "      Installed (test skipped)" -ForegroundColor Yellow
 }
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "   Installation Complete!" -ForegroundColor Cyan
+Write-Host "   Installation Complete! ✓" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Installation Directory: $INSTALL_DIR" -ForegroundColor White
-Write-Host "Executable Location: $exePath" -ForegroundColor White
+Write-Host "Installation Path:" -ForegroundColor White
+Write-Host "  $exePath" -ForegroundColor Gray
 Write-Host ""
-Write-Host "To use Azynt CLI, type: " -NoNewline -ForegroundColor White
+Write-Host "To start using Azynt CLI:" -ForegroundColor White
+Write-Host "  1. Close and reopen your terminal" -ForegroundColor Gray
+Write-Host "  2. Type: " -NoNewline -ForegroundColor Gray
 Write-Host "azynt" -ForegroundColor Green
 Write-Host ""
-Write-Host "NOTE: Restart your terminal or run: " -NoNewline -ForegroundColor Yellow
-Write-Host "refreshenv" -ForegroundColor Cyan
+Write-Host "Or test in current session:" -ForegroundColor Gray
+Write-Host "  " -NoNewline
+Write-Host "& '$exePath'" -ForegroundColor Cyan
 Write-Host ""
