@@ -36,12 +36,11 @@ if (-not (Test-Path $INSTALL_DIR)) {
 if (-not (Test-Path $BIN_DIR)) {
     New-Item -ItemType Directory -Path $BIN_DIR -Force | Out-Null
 }
-Write-Host "      Created: $BIN_DIR" -ForegroundColor Green
+
 
 # Download executable
 Write-Host ""
 Write-Host "[2/6] Downloading Azynt CLI from GitHub..." -ForegroundColor Yellow
-Write-Host "      URL: $DOWNLOAD_URL" -ForegroundColor Gray
 $exePath = "$BIN_DIR\$EXE_NAME"
 
 try {
@@ -66,10 +65,6 @@ try {
     Write-Host "Error: $_" -ForegroundColor Red
     Write-Host ""
     Write-Host "Alternative: Manual Installation" -ForegroundColor Yellow
-    Write-Host "1. Open in browser: $DOWNLOAD_URL" -ForegroundColor White
-    Write-Host "2. Save the downloaded file as: $exePath" -ForegroundColor White
-    Write-Host "3. Add to PATH: $BIN_DIR" -ForegroundColor White
-    Write-Host ""
     exit 1
 }
 
@@ -82,10 +77,9 @@ if (-not (Test-Path $exePath)) {
 }
 
 $fileSize = (Get-Item $exePath).Length / 1MB
-Write-Host "      File size: $([math]::Round($fileSize, 2)) MB" -ForegroundColor Green
-Write-Host "      Location: $exePath" -ForegroundColor Gray
 
-# Add to PATH
+
+
 Write-Host ""
 Write-Host "[4/6] Adding to system PATH..." -ForegroundColor Yellow
 
@@ -93,7 +87,6 @@ $currentPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($currentPath -notlike "*$BIN_DIR*") {
     $newPath = if ($currentPath) { "$currentPath;$BIN_DIR" } else { $BIN_DIR }
     [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-    Write-Host "      Added to PATH" -ForegroundColor Green
 } else {
     Write-Host "      Already in PATH" -ForegroundColor Green
 }
@@ -155,15 +148,9 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "   Installation Complete! ✓" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Installation Path:" -ForegroundColor White
-Write-Host "  $exePath" -ForegroundColor Gray
-Write-Host ""
 Write-Host "To start using Azynt CLI:" -ForegroundColor White
 Write-Host "  1. Close and reopen your terminal" -ForegroundColor Gray
 Write-Host "  2. Type: " -NoNewline -ForegroundColor Gray
 Write-Host "azynt" -ForegroundColor Green
 Write-Host ""
-Write-Host "Or test in current session:" -ForegroundColor Gray
-Write-Host "  " -NoNewline
-Write-Host "& '$exePath'" -ForegroundColor Cyan
-Write-Host ""
+
